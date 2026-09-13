@@ -14,7 +14,7 @@ namespace Aurora.Audio
     /// </summary>
     /// <typeparam name="T">The type of the audio file identifier. The derived type decides what type to use.</typeparam>
     /// <remarks>An instance of <see cref="AudioManager{T}"/> is not guaranteed to be thread safe.</remarks>
-    public abstract class AudioManager<T> : IDisposable where T : notnull, IEquatable<T>
+    public abstract class AudioManager<T> : IDisposable where T : IEquatable<T>
     {
         private CancellationTokenSource _cancellationTokenSource;
 
@@ -27,7 +27,7 @@ namespace Aurora.Audio
 
         private Dictionary<int, PlaybackInfo<T>> _playbackInfos = new();
 
-        private int _idGenerator;
+        private static int _idGenerator;
 
         /// <summary>
         /// Gets the active playbacks of this manager.
@@ -51,7 +51,7 @@ namespace Aurora.Audio
             }
         }
 
-        private int NewId => Interlocked.Increment(ref _idGenerator);
+        private static int NewId => Interlocked.Increment(ref _idGenerator);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AudioManager{T}"/> class.
@@ -67,13 +67,18 @@ namespace Aurora.Audio
         /// <param name="id">The identifier of the sound to load.</param>
         /// <param name="cancellationToken">The cancellation token for the load.</param>
         /// <returns>A task that will complete when the sound identified by <paramref name="id"/> has loaded.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="id"/> is <see langword="null"/>.</exception>
         /// <exception cref="ObjectDisposedException">This manager has been disposed.</exception>
-        public Task<ISound<T>> LoadAsync(T id, CancellationToken cancellationToken = default)
+        public Task<Sound<T>> LoadAsync(T id, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
+            if (id == null)
+            {
+                throw new ArgumentNullException(nameof(id));
+            }
             if (cancellationToken.IsCancellationRequested)
             {
-                return Task.FromCanceled<ISound<T>>(cancellationToken);
+                return Task.FromCanceled<Sound<T>>(cancellationToken);
             }
             if (_soundInfos.TryGetValue(id, out var soundInfo))
             {
@@ -85,7 +90,7 @@ namespace Aurora.Audio
             );
             try
             {
-                var taskCompletionSource = new TaskCompletionSource<ISound<T>>();
+                var taskCompletionSource = new TaskCompletionSource<Sound<T>>();
                 var loadTask             = LoadAsyncImpl(id, cancellationTokenSource.Token);
                 if (loadTask == null)
                 {
@@ -106,10 +111,10 @@ namespace Aurora.Audio
             }
         }
 
-        private static readonly Action<Task<ISound<T>>, object> OnLoadCompleted = (ancestor, state) =>
+        private static readonly Action<Task<Sound<T>>, object> OnLoadCompleted = (ancestor, state) =>
         {
             var (@this, id, taskCompletionSource, cancellationTokenSource) =
-                (Tuple<AudioManager<T>, T, TaskCompletionSource<ISound<T>>, CancellationTokenSource>)state;
+                (Tuple<AudioManager<T>, T, TaskCompletionSource<Sound<T>>, CancellationTokenSource>)state;
             try
             {
                 if (ancestor.IsFaulted || ancestor.IsCanceled)
@@ -144,9 +149,9 @@ namespace Aurora.Audio
             }
 
             static InvalidOperationException GetInvalidOperationException(
-                T               id,
-                Task<ISound<T>> loadTask,
-                out ISound<T>   sound)
+                T              id,
+                Task<Sound<T>> loadTask,
+                out Sound<T>   sound)
             {
                 sound = loadTask.Result;
                 return sound == null
@@ -170,7 +175,7 @@ namespace Aurora.Audio
         /// <exception cref="KeyNotFoundException"><paramref name="sound"/> is not loaded by this manager.</exception>
         /// <exception cref="InvalidOperationException"><see cref="CreatePlaybackImpl"/> returned <see langword="null"/> or a playback that is not in the <see cref="PlaybackStatus.None"/> status.</exception>
         /// <exception cref="ObjectDisposedException">This manager has been disposed.</exception>
-        public Playback<T> CreatePlayback(ISound<T> sound, double volume = 1)
+        public Playback<T> CreatePlayback(Sound<T> sound, double volume = 1)
         {
             ThrowIfDisposed();
             if (sound == null)
@@ -187,7 +192,7 @@ namespace Aurora.Audio
             }
             var soundId   = sound.Id;
             var soundInfo = _soundInfos[soundId];
-            var playback  = CreatePlaybackImpl(sound);
+            var playback  = CreatePlaybackImpl(NewId, sound);
             if (playback == null)
             {
                 throw new InvalidOperationException("CreatePlaybackImpl returned null");
@@ -199,12 +204,10 @@ namespace Aurora.Audio
                     "CreatePlaybackImpl returned a playback that is not in the None status"
                 );
             }
-            playback.InternalId    = NewId;
-            playback.InternalSound = sound;
-            playback.Volume        = volume;
+            playback.Volume = volume;
             soundInfo.PlaybackCount++;
             _playbackInfos.Add(
-                playback.InternalId,
+                playback.Id,
                 new PlaybackInfo<T>(
                     playback,
                     soundId,
@@ -229,7 +232,7 @@ namespace Aurora.Audio
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="volume"/> is less than 0 or greater than 1.</exception>
         /// <exception cref="KeyNotFoundException"><paramref name="sound"/> is not loaded by this manager.</exception>
         /// <exception cref="ObjectDisposedException">This manager has been disposed.</exception>
-        public Playback<T> Play(ISound<T> sound, double volume = 1)
+        public Playback<T> Play(Sound<T> sound, double volume = 1)
         {
             var playback = CreatePlayback(sound, volume);
             playback.Play();
@@ -244,12 +247,17 @@ namespace Aurora.Audio
         /// <param name="cancellationToken">The cancellation token for the load.</param>
         /// <returns>A task that completes with the created playback.</returns>
         /// <remarks>The instance the task completes with is exactly the one created by the derived type.</remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="id"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="volume"/> is less than 0 or greater than 1.</exception>
         /// <exception cref="ObjectDisposedException">This manager has been disposed.</exception>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> has been canceled.</exception>
         public Task<Playback<T>> PlayAsync(T id, double volume = 1, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
+            if (id == null)
+            {
+                throw new ArgumentNullException(nameof(id));
+            }
             if (volume is double.NaN or < 0 or > 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(volume), volume, null);
@@ -271,7 +279,7 @@ namespace Aurora.Audio
             return taskCompletionSource.Task;
         }
 
-        private static readonly Action<Task<ISound<T>>, object> PlayOnLoadCompleted = (ancestor, state) =>
+        private static readonly Action<Task<Sound<T>>, object> PlayOnLoadCompleted = (ancestor, state) =>
         {
             var (@this, taskCompletionSource, cancellationTokenSource, volume) =
                 (Tuple<AudioManager<T>, TaskCompletionSource<Playback<T>>, CancellationTokenSource, double>)state;
@@ -309,11 +317,16 @@ namespace Aurora.Audio
         /// <param name="volume">The volume of the playback, in the range 0 to 1.</param>
         /// <param name="cancellationToken">The cancellation token for the load.</param>
         /// <remarks>The playback is disposed automatically by <see cref="Update"/> once it stops.</remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="id"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="volume"/> is less than 0 or greater than 1.</exception>
         /// <exception cref="ObjectDisposedException">This manager has been disposed.</exception>
         public void BeginPlayAndForget(T id, double volume = 1, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
+            if (id == null)
+            {
+                throw new ArgumentNullException(nameof(id));
+            }
             if (volume is double.NaN or < 0 or > 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(volume), volume, null);
@@ -341,7 +354,7 @@ namespace Aurora.Audio
             return taskCompletionSource.Task;
         }
 
-        private static readonly Action<Task<ISound<T>>, object> PlayAndSetAutoDisposeWhenStoppedOnLoadCompleted =
+        private static readonly Action<Task<Sound<T>>, object> PlayAndSetAutoDisposeWhenStoppedOnLoadCompleted =
             (ancestor, state) =>
             {
                 var (@this, taskCompletionSource, cancellationTokenSource, volume) =
@@ -378,11 +391,12 @@ namespace Aurora.Audio
         /// <summary>
         /// Creates a playback of the given sound.
         /// </summary>
+        /// <param name="id">The identifier of the playback.</param>
         /// <param name="sound">The loaded sound to create a playback of.</param>
         /// <returns>The created playback.</returns>
         /// <remarks>When overriding this method, call <see cref="ThrowIfDisposed"/> first.</remarks>
         /// <exception cref="ObjectDisposedException">This manager has been disposed.</exception>
-        protected abstract Playback<T> CreatePlaybackImpl(ISound<T> sound);
+        protected abstract Playback<T> CreatePlaybackImpl(int id, Sound<T> sound);
 
         /// <summary>
         /// Loads the sound identified by <paramref name="id"/>.
@@ -392,7 +406,8 @@ namespace Aurora.Audio
         /// <returns>A task that completes with the loaded sound.</returns>
         /// <remarks>When overriding this method, call <see cref="ThrowIfDisposed"/> first.</remarks>
         /// <exception cref="ObjectDisposedException">This manager has been disposed.</exception>
-        protected abstract Task<ISound<T>> LoadAsyncImpl(T id, CancellationToken cancellationToken);
+        /// <exception cref="ArgumentNullException"><paramref name="id"/> is <see langword="null"/>.</exception>
+        protected abstract Task<Sound<T>> LoadAsyncImpl(T id, CancellationToken cancellationToken);
 
         /// <summary>
         /// Polls active playbacks and releases the ones that meet either of the following conditions:
@@ -632,6 +647,7 @@ namespace Aurora.Audio
         /// <param name="id">The identifier of the sound to unload.</param>
         /// <remarks>Do not unload a sound that is still loading.</remarks>
         /// <exception cref="ObjectDisposedException">This manager has been disposed.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="id"/> is <see langword="null"/>.</exception>
         /// <exception cref="KeyNotFoundException">The sound identified by <paramref name="id"/> is not loaded by this manager.</exception>
         /// <exception cref="InvalidOperationException">The sound is still loading.</exception>
         public void DisposeSound(T id)
@@ -676,7 +692,7 @@ namespace Aurora.Audio
             }
         }
 
-        private static void DisposeNoThrow(ISound<T> sound)
+        private static void DisposeNoThrow(Sound<T> sound)
         {
             try
             {

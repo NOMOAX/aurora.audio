@@ -3,13 +3,13 @@ using System.Threading.Tasks;
 
 namespace Aurora.Audio
 {
-    internal sealed class SoundInfo<T> where T : notnull, IEquatable<T>
+    internal sealed class SoundInfo<T> where T : IEquatable<T>
     {
-        internal readonly Task<ISound<T>> LoadTask;
+        internal readonly Task<Sound<T>> LoadTask;
 
         internal int PlaybackCount;
 
-        internal SoundInfo(Task<ISound<T>> loadTask)
+        internal SoundInfo(Task<Sound<T>> loadTask)
         {
             LoadTask = loadTask;
         }

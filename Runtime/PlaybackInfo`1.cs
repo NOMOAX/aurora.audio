@@ -2,7 +2,7 @@ using System;
 
 namespace Aurora.Audio
 {
-    internal sealed class PlaybackInfo<T> where T : notnull, IEquatable<T>
+    internal sealed class PlaybackInfo<T> where T : IEquatable<T>
     {
         internal readonly Playback<T> Playback;
 

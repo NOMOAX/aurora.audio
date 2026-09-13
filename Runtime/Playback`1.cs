@@ -8,13 +8,13 @@ namespace Aurora.Audio
     /// <typeparam name="T">The type of the audio file identifier. The derived type decides what type to use.</typeparam>
     /// <remarks>
     /// <para>
-    /// It is created from and depends on a particular <see cref="ISound{T}"/>; a sound can be reused to create multiple playbacks.
+    /// It is created from and depends on a particular <see cref="Sound{T}"/>; a sound can be reused to create multiple playbacks.
     /// </para>
     /// <para>
     /// <see cref="Stop"/> provides a default implementation, but the derived type must still ensure that <see cref="Status"/> becomes <see cref="PlaybackStatus.None"/> after it is called.
     /// </para>
     /// </remarks>
-    public abstract class Playback<T> : IDisposable where T : notnull, IEquatable<T>
+    public abstract class Playback<T> : IDisposable where T : IEquatable<T>
     {
         private bool _disposed;
 
@@ -23,35 +23,50 @@ namespace Aurora.Audio
         /// </summary>
         public bool IsDisposed => _disposed;
 
-        internal int InternalId;
+        private readonly int _id;
 
         /// <summary>
-        /// Gets a number that distinguishes this playback from every other playback of the same <see cref="AudioManager{T}"/>.
+        /// Gets a number that distinguishes this playback from every other playback.
         /// </summary>
-        /// <remarks>The <see cref="AudioManager{T}"/> assigns this value when the playback is created.</remarks>
+        /// <remarks>
+        /// The <see cref="AudioManager{T}"/> assigns this value when the playback is created.
+        /// <br/>
+        /// The value is unique among the playbacks created by every <see cref="AudioManager{T}"/> whose identifier type is <typeparamref name="T"/>, because the managers share the counter that generates the value.
+        /// </remarks>
         /// <exception cref="ObjectDisposedException">This playback has been disposed.</exception>
         public int Id
         {
             get
             {
                 ThrowIfDisposed();
-                return InternalId;
+                return _id;
             }
         }
 
-        internal ISound<T> InternalSound;
+        private Sound<T> _sound;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Playback{T}"/> class.
+        /// </summary>
+        /// <param name="id">The identifier of this playback.</param>
+        /// <param name="sound">The sound this playback is created from.</param>
+        protected Playback(int id, Sound<T> sound)
+        {
+            _id    = id;
+            _sound = sound;
+        }
 
         /// <summary>
         /// Gets the sound this playback was created from.
         /// </summary>
-        /// <remarks>The <see cref="AudioManager{T}"/> assigns this value when the playback is created.</remarks>
+        /// <remarks>The <see cref="AudioManager{T}"/> passes this value to the constructor when the playback is created.</remarks>
         /// <exception cref="ObjectDisposedException">This playback has been disposed.</exception>
-        public ISound<T> Sound
+        public Sound<T> Sound
         {
             get
             {
                 ThrowIfDisposed();
-                return InternalSound;
+                return _sound;
             }
         }
 
@@ -145,12 +160,12 @@ namespace Aurora.Audio
             get
             {
                 ThrowIfDisposed();
-                return Position / InternalSound.Length;
+                return Position / _sound.Length;
             }
             set
             {
                 ThrowIfDisposed();
-                Position = value * InternalSound.Length;
+                Position = value * _sound.Length;
             }
         }
 
@@ -225,7 +240,7 @@ namespace Aurora.Audio
                 _disposed = true;
                 if (disposing)
                 {
-                    InternalSound             = null;
+                    _sound                    = null;
                     StatusChanged             = null;
                     VolumeChanged             = null;
                     PositionChanged           = null;
