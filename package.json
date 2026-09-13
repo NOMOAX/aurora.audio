@@ -1,0 +1,18 @@
+{
+  "name": "com.kevin-games.aurora.audio",
+  "displayName": "Aurora Audio",
+  "version": "1.0.0",
+  "unity": "2021.2",
+  "description": "Audio abstraction layer that manages async loading, playback lifetime and event dispatch.\n\nDependencies:\n- Aurora (https://github.com/NOMOAX/aurora.git)",
+  "keywords": [
+    "aurora"
+  ],
+  "dependencies": {
+    "com.kevin-games.aurora": "1.5.0"
+  },
+  "author": {
+    "name": "Kevin Games",
+    "email": "844038603@qq.com",
+    "url": "https://github.com/NOMOAX"
+  }
+}
