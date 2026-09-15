@@ -50,8 +50,13 @@ namespace Aurora.Audio
         /// </summary>
         /// <param name="id">The identifier of this playback.</param>
         /// <param name="sound">The sound this playback is created from.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="sound"/> is <see langword="null"/>.</exception>
         protected Playback(int id, Sound<T> sound)
         {
+            if (sound == null)
+            {
+                throw new ArgumentNullException(nameof(sound));
+            }
             _id    = id;
             _sound = sound;
         }
@@ -75,7 +80,7 @@ namespace Aurora.Audio
         /// <summary>
         /// Gets a value indicating whether this playback is automatically disposed by the <see cref="AudioManager{T}"/> once it stops.
         /// </summary>
-        /// <remarks>Only <see cref="AudioManager{T}"/> sets this value, when the playback is created by <see cref="AudioManager{T}.BeginPlayAndForget"/>.</remarks>
+        /// <remarks>Only <see cref="AudioManager{T}"/> sets this value, when the playback is created by <see cref="AudioManager{T}.BeginPlayAndForget(T, double, System.Threading.CancellationToken)"/>.</remarks>
         /// <exception cref="ObjectDisposedException">This playback has been disposed.</exception>
         public bool AutoDisposeWhenStopped
         {
