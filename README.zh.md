@@ -1,7 +1,7 @@
 # Aurora Audio
 
 ![许可](https://img.shields.io/github/license/NOMOAX/aurora.audio)
-![版本](https://img.shields.io/badge/version-2.0.2-blue)
+![版本](https://img.shields.io/badge/version-2.0.3-blue)
 ![最低 Unity 版本](https://img.shields.io/badge/Unity-2021.2%2B-blue)
 
 管理音频的异步加载、播放生命周期与事件分发的音频抽象层。
