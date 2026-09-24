@@ -1,7 +1,7 @@
 # Aurora Audio
 
 ![license](https://img.shields.io/github/license/NOMOAX/aurora.audio)
-![version](https://img.shields.io/badge/version-2.0.3-blue)
+![version](https://img.shields.io/badge/version-2.0.4-blue)
 ![lowest Unity version](https://img.shields.io/badge/Unity-2021.2%2B-blue)
 
 Audio abstraction layer that manages async loading, playback lifetime and event dispatch.
