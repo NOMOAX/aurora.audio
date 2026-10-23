@@ -108,7 +108,7 @@ namespace Aurora.Audio
             var createSoundTask      = CreateSoundAsync(id, cancellationToken);
             if (createSoundTask == null)
             {
-                throw new InvalidOperationException(nameof(CreateSoundAsync) + " returned null");
+                throw new InvalidOperationException(nameof(CreateSoundAsync) + " returned null.");
             }
             _soundInfos.Add(id, new SoundInfo<T>(taskCompletionSource.Task));
             TaskUtility.ContinueWithSynchronously(
@@ -163,10 +163,10 @@ namespace Aurora.Audio
             {
                 sound = loadTask.Result;
                 return sound == null
-                           ? new InvalidOperationException("Loaded sound is null")
+                           ? new InvalidOperationException("Loaded sound is null.")
                            : EqualityComparer<T>.Default.Equals(id, sound.Id)
                                ? null
-                               : new InvalidOperationException("Loaded sound has unexpected id");
+                               : new InvalidOperationException("Loaded sound has unexpected id.");
             }
         };
 
@@ -203,14 +203,14 @@ namespace Aurora.Audio
             var playback  = CreatePlaybackImpl(NewId, sound);
             if (playback == null)
             {
-                throw new InvalidOperationException(nameof(CreatePlaybackImpl) + " returned null");
+                throw new InvalidOperationException(nameof(CreatePlaybackImpl) + " returned null.");
             }
             if (playback.Status != PlaybackStatus.None)
             {
                 DisposeNoThrow(playback);
                 throw new InvalidOperationException(
                     nameof(CreatePlaybackImpl) + " returned a playback that is not in the " +
-                    nameof(PlaybackStatus.None) + " status"
+                    nameof(PlaybackStatus.None) + " status."
                 );
             }
             soundInfo.PlaybackCount++;
