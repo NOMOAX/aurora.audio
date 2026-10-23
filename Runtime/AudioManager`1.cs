@@ -130,20 +130,20 @@ namespace Aurora.Audio
         /// <exception cref="ArgumentNullException"><paramref name="id"/> is <see langword="null"/>.</exception>
         protected abstract Task<Sound<T>> CreateSoundAsync(T id, CancellationToken cancellationToken);
 
-        private static readonly Action<Task<Sound<T>>, object> CreateSoundContinuation = (ancestor, state) =>
+        private static readonly Action<Task<Sound<T>>, object> CreateSoundContinuation = (antecedent, state) =>
         {
             var (@this, id, taskCompletionSource, cancellationToken) =
                 (Tuple<AudioManager<T>, T, TaskCompletionSource<Sound<T>>, CancellationToken>)state;
-            if (ancestor.IsFaulted || ancestor.IsCanceled)
+            if (antecedent.IsFaulted || antecedent.IsCanceled)
             {
                 if (!@this.IsDisposed)
                 {
                     @this._soundInfos.Remove(id);
                 }
-                TaskUtility.HandleFaultsAndCancellation(ancestor, taskCompletionSource, cancellationToken);
+                TaskUtility.HandleFaultsAndCancellation(antecedent, taskCompletionSource, cancellationToken);
                 return;
             }
-            var invalidOperationException = GetInvalidOperationException(id, ancestor, out var sound);
+            var invalidOperationException = GetInvalidOperationException(id, antecedent, out var sound);
             if (invalidOperationException != null)
             {
                 if (!@this.IsDisposed)
@@ -943,12 +943,12 @@ namespace Aurora.Audio
 
         private sealed class LoadAndPlayPromise : TaskCompletionSource<Playback<T>>
         {
-            private static readonly Action<Task<Sound<T>>, object> Complete = (getSoundTask, state) =>
+            private static readonly Action<Task<Sound<T>>, object> Complete = (antecedent, state) =>
             {
                 var (promise, createPlayback, state1, userCancellationToken) =
                     (Tuple<LoadAndPlayPromise, Func<Sound<T>, Playback<T>>, Tuple<bool?, double?>, CancellationToken>)
                     state;
-                promise.CompleteMethod(getSoundTask, createPlayback, state1, userCancellationToken);
+                promise.CompleteMethod(antecedent, createPlayback, state1, userCancellationToken);
             };
 
             private static readonly Action<object> Cancel = state =>
